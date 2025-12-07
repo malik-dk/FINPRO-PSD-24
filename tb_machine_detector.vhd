@@ -23,8 +23,12 @@ architecture Sim of tb_machine_detector is
 begin
 
     UUT: machine_detector_top port map (
-        clk => clk, reset => reset, write_en => write_en,
-        addr_in => addr_in, data_in => data_in, sensor_in => sensor_in,
+        clk => clk,
+        reset => reset,
+        write_en => write_en,
+        addr_in => addr_in,
+        data_in => data_in,
+        sensor_in => sensor_in,
         ALARM_LED => alarm_led
     );
 
@@ -46,15 +50,16 @@ begin
         
         report "=== PHASE 1: Configuration & Setup ===";
         write_en <= '1';
-        addr_in <= "01";              
+
+        addr_in <= "01"; 
         data_in <= to_signed(250, 16);
         wait for CLK_PERIOD;
 
-        addr_in <= "10";
-        data_in <= to_signed(4000, 16); 
+        addr_in <= "10";  
+        data_in <= to_signed(2000, 16);
         wait for CLK_PERIOD;
 
-        write_en <= '0';        
+        write_en <= '0';
         wait for 100 ns;
         
         report "=== PHASE 2: Testing SAFE frequency ===";
@@ -63,8 +68,8 @@ begin
             sensor_in <= to_signed(integer(real_val), 16);
             wait for CLK_PERIOD;
         end loop;
-        
-        report "Expected: ALARM_LED = '0' (SAFE condition)";
+
+        report "Expected: ALARM_LED = '0' (SAFE)";
         wait for 100 ns;
 
         report "=== PHASE 3: Testing Random Noise ===";
@@ -74,39 +79,40 @@ begin
             sensor_in <= to_signed(integer(real_val), 16);
             wait for CLK_PERIOD;
 
-        if alarm_led = '1' then
-                report "FAILURE: Random noise triggered the Alarm at " & time'image(now) 
-                severity error;
+            if alarm_led = '1' then
+                report "FAILURE: Random noise triggered the Alarm at "
+                    & time'image(now)
+                    severity error;
             end if;
         end loop;
 
-        report "Expected: ALARM_LED = '0' (SAFE condition)";
+        report "Expected: ALARM_LED = '0' (SAFE)";
         wait for 100 ns;
 
-        report "=== PHASE 4: Testing DANGER frequency (target detected) ===";
-        for i in 0 to 200 loop        
-            real_val := 5000.0 * sin(real(i) * 0.22);
+        report "=== PHASE 4: Testing DANGER frequency ===";
+        for i in 0 to 200 loop
+            real_val := 9000.0 * sin(real(i) * 0.22); 
             sensor_in <= to_signed(integer(real_val), 16);
             wait for CLK_PERIOD;
         end loop;
 
-        report "Expected: ALARM_LED = '1' (DANGER detected!)";
+        report "Expected: ALARM_LED = '1' (DANGER)";
         wait for 200 ns;
 
         report "=== PHASE 5: Testing reprogramming (higher threshold) ===";
         write_en <= '1';
         addr_in <= "10";
-        data_in <= to_signed(32000, 16); 
+        data_in <= to_signed(32000, 16);
         wait for CLK_PERIOD;
         write_en <= '0';
-        wait for 50 ns;
+        wait for CLK_PERIOD;
 
-        for i in 0 to 250 loop
+        for i in 0 to 500 loop
             real_val := 3500.0 * sin(real(i) * 0.22);
             sensor_in <= to_signed(integer(real_val), 16);
             wait for CLK_PERIOD;
         end loop;
-        
+
         report "Expected: ALARM_LED = '0' (threshold too high)";
         wait for 100 ns;
 
